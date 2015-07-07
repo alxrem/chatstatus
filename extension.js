@@ -90,9 +90,70 @@ var Telepathy = {
 	}
 }
 
+var Gajim = {
+	contactListCommand: "gajim",
+
+	getStatus: function() {
+		var AccListArr = Gajim._getAccountsList();
+		var inc = 0;
+		var AccName = "";
+		var LastStatus = "";
+
+		for (inc = 0; inc < AccListArr.length - 1 ; inc++) {
+			AccName = new String(AccListArr[inc]);
+
+			LastStatus = new String(GLib.spawn_command_line_sync('gajim-remote get_status ' + AccName)[1]).trim();
+		}
+
+		switch (LastStatus) {
+			case 'online':
+				LastStatus = 'available';
+				break;
+			case 'xa':
+				LastStatus = 'busy';
+				break;
+		}
+
+		if (! _arr_contains(KnownStatus,LastStatus)) {
+			LastStatus = "custom";
+		}
+		return LastStatus;
+	},
+
+	setStatus: function(requested_status) {
+		var AccListArr = Gajim._getAccountsList();
+		var inc = 0;
+		var AccName;
+
+		switch (requested_status) {
+			case 'available':
+				requested_status = 'online';
+				break;
+			case 'busy':
+				requested_status = 'xa';
+				break;
+		}
+
+		for (inc = 0; inc < AccListArr.length - 1; inc++) {
+			AccName = new String(AccListArr[inc]);
+
+			GLib.spawn_command_line_sync('gajim-remote change_status ' + requested_status + ' ' + AccName);
+		}
+	},
+
+	_getAccountsList: function() {
+		var GajimListShell = GLib.spawn_command_line_sync('gajim-remote list_accounts');
+		var AccountListTxt = new String(GajimListShell[1]);
+		var Ret = new Array();
+
+		Ret = AccountListTxt.split("\n");
+		return Ret;
+	}
+}
+
 function enable() {
 	timer_start = Mainloop.timeout_add_seconds(REFRESH, function () {
-		messenger = Telepathy;
+		messenger = Gajim;
 		button = new PanelMenu.Button(0.0);
 		_set_panel_display(button);
 		_build_menu(button);
